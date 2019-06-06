@@ -192,8 +192,8 @@ namespace Rougelike
         void _OverwriteRLUDPath(int rlud)
         {
             int xLeft, dx, yBottom, dy;
-            int[] forth = { (int)Tile.wall, (int)Tile.floor };
-            int[] back = { (int)Tile.division, (int)Tile.path };
+            HashSet<int> forth = new HashSet<int>(){ (int)Tile.wall, (int)Tile.floor };
+            HashSet<int> back = new HashSet<int>() { (int)Tile.division, (int)Tile.path };
             var direction = new int[2];
             for (int x = 1; x < nDivW - 1; x++)
             {
@@ -532,7 +532,6 @@ namespace Rougelike
 
         void _ConnectDots(Coordinates start, Coordinates goal, bool is_horizontal)
         {
-            int[] destinations = { (int)Tile.floor, (int)Tile.path };
             Coordinates p = start;
             int x = (start.X - goal.X < 0) ? (int)Direction.right : (int)Direction.left;
             int y = (start.Y - goal.Y < 0) ? (int)Direction.up : (int)Direction.down;
@@ -613,7 +612,7 @@ namespace Rougelike
 
         void _Door()
         {
-            int[] disused = new int[] { (int)Tile.end, (int)Tile.border, (int)Tile.division };
+            HashSet<int> disused = new HashSet<int>(){ (int)Tile.end, (int)Tile.border, (int)Tile.division };
             Coordinates door = new Coordinates(0, 0);
             for (int j = 0; j < height; j++)
             {

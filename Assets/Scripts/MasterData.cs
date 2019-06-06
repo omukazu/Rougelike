@@ -19,12 +19,15 @@ namespace Rougelike
         public static int[] itemTypeWeightTable { get; private set; }
         public static List<int[]> weightTables { get; private set; }
 
-        private void Start()
+        public static HashSet<int> nodeCandidates { get; private set; }
+
+    private void Start()
         {
             _SetObjects();
             _SetEnemyList();
             _SetItemList();
             _SetWeightTables();
+            nodeCandidates = new HashSet<int>() { (int)Tile.floor, (int)Tile.path, (int)Tile.door };
         }
 
         private void _SetObjects()
@@ -102,5 +105,7 @@ namespace Rougelike
             weightTables.Add(data[(int)ItemType.miscellaneous * 2 + 3].Map(e => int.Parse(e)).ToArray());
             weightTables.Add(data[(int)ItemType.accessory * 2 + 3].Map(e => int.Parse(e)).ToArray());
         }
+
+
     }
 }

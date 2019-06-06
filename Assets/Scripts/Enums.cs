@@ -111,4 +111,12 @@ namespace Rougelike
         necklace = 1,
         sandals = 2
     }
+
+    // for action.cs
+    enum State
+    {
+        None,
+        Open,
+        Closed
+    }
 }
