@@ -1,6 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
+
+using System.IO;
 
 namespace Rougelike
 {
@@ -26,39 +27,20 @@ namespace Rougelike
         public int L { get; set; }
     }
 
-    static class Extentions
+    public class CsvReader
     {
-        public struct IndexedItem2<T>
+        public char delimiter = ',';
+        public List<string[]> ReadFile(string path)
         {
-            public T Element { get; }
-            public int X { get; }
-            public int Y { get; }
-            internal IndexedItem2(T element, int x, int y)
+            TextAsset csvFile = Resources.Load(path) as TextAsset;
+            List<string[]> data = new List<string[]>();
+            StringReader sr = new StringReader(csvFile.text);
+            while (sr.Peek() > -1)
             {
-                this.Element = element;
-                this.X = x;
-                this.Y = y;
+                string line = sr.ReadLine();
+                data.Add(line.Split(delimiter));
             }
-        }
-
-        public static IEnumerable<IndexedItem2<T>> WithIndex<T>(this T[,] self)
-        {
-            if (self == null)
-                throw new System.ArgumentNullException(nameof(self));
-
-            for (int x = 0; x < self.GetLength(0); x++)
-                for (int y = 0; y < self.GetLength(1); y++)
-                    yield return new IndexedItem2<T>(self[x, y], x, y);
-        }
-    }
-
-    public static class ListExtensions
-    {
-        public static T Pop<T>(this IList<T> self)
-        {
-            var result = self[0];
-            self.RemoveAt(0);
-            return result;
+            return data;
         }
     }
 }

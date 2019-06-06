@@ -14,15 +14,25 @@ namespace Rougelike
         leftDoor = 5,
         topDoor = 6,
         bottomDoor = 7,
-        shape = 8,
-        type = 9,
-        category = 10
+        type = 8,
+        category = 9
     }
 
-    enum Shape : int
+    enum Direction : int
     {
-        square = 0,
-        circle = 1
+        right = 4,
+        left = 5,
+        up = 6,
+        down = 7,
+        horizontal = 8,
+        vertical = 9,
+    }
+
+    enum RoomType : int
+    {
+        deleted = -1,
+        normal = 0,
+        hidden = 1,
     }
 
     enum Tile : int
@@ -38,13 +48,6 @@ namespace Rougelike
         hPath = 6,
         hDoor = 7,
         hidden = 8,
-    }
-
-    enum Type : int
-    {
-        deleted = -1,
-        normal = 0,
-        hidden = 1,
     }
 
     enum NormalSubCategory : int
@@ -63,13 +66,49 @@ namespace Rougelike
         tree = 6,
     }
 
-    enum Direction : int
+    // for Spawn.cs
+    enum Enemies : int
     {
-        right = 4,
-        left = 5,
-        up = 6,
-        down = 7,
-        horizontal = 8,
-        vertical = 9,
+        bat = 0,
+    }
+
+    enum ItemType : int
+    {
+        weapon = 0,
+        armor = 1,
+        miscellaneous = 2,
+        accessory = 3,
+    }
+
+    enum Weapon : int
+    {
+        woodenStick = 0,
+        blade = 1,
+        blazingSword = 2,
+        bow = 3,
+    }
+
+    enum Armor : int
+    {
+        cloth = 0,
+        leather = 1,
+        steal = 2,
+        diamond = 3,
+    }
+
+    enum Miscellaneous : int
+    {
+        wrapper = 0,
+        herb = 1,
+        strongPortion = 2,
+        scarecrow = 3,
+        scroll = 4,
+    }
+
+    enum Accessory : int
+    {
+        ring = 0,
+        necklace = 1,
+        sandals = 2
     }
 }

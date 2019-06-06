@@ -9,8 +9,8 @@ namespace Rougelike
 {
     public class Dungeon : MonoBehaviour
     {
-        private static int unitW;
-        private static int unitH;
+        public static int unitW { get; private set; }
+        public static int unitH { get; private set; }
         private static int nDivW;
         private static int nDivH;
         private static int width;
@@ -18,25 +18,23 @@ namespace Rougelike
 
         public static int[,] map;
         public static SpriteRenderer[,] sprites;
-        public static List<int> nRoom;
+        public static List<Coordinates> roomIndices;
         public static int[,][] rooms;
         public static int nDoor;
         public static Dictionary<int, Coordinates> doors;
         public static int nHDoor;
         public static Dictionary<int, Coordinates> hDoors;
-        public static Dictionary<Coordinates, GameObject> chars;
-        public static Dictionary<Coordinates, List<GameObject>> items;
 
         void Start()
         {
-            _Initialize(unitW = 10, unitH = 8, nDivW = 4, nDivH = 3);
+            new Dungeon(unitW=10, unitH=8, nDivW=4, nDivH=3);
             int[] dx = Enumerable.Range(1, nDivW).ToArray();
             int[] dr = GeneratePermutation(nDivH, nDivW);
             int[] dp = GeneratePermutation(nDivH - 1, nDivW);
             _Modify(ref dp, dr);
 
             _Divide();
-            Room();
+            _Room(dr);
             _OverwriteRLUDPath((int)Direction.right);
             _OverwriteRLUDPath((int)Direction.left);
             _OverwriteRLUDPath((int)Direction.up);
@@ -46,12 +44,12 @@ namespace Rougelike
             _DeletePath(dp);
             _DeleteRoom(dr);
             _Connect(dr, dp);
-            HiddenRoom(dr, dp);
+            _HiddenRoom(dr, dp);
             _Door();
             Generate();
         }
 
-        void _Initialize(int unitW, int unitH, int nDivW, int nDivH)
+        public Dungeon(int unitW, int unitH, int nDivW, int nDivH)
         {
             Dungeon.unitW = unitW;
             Dungeon.unitH = unitH;
@@ -61,7 +59,7 @@ namespace Rougelike
             height = (unitH + 1) * Dungeon.nDivH + 1;
             map = new int[width, height];
             sprites = new SpriteRenderer[width, height];
-            nRoom = new List<int>();
+            roomIndices = new List<Coordinates>();
             int length = Enum.GetValues(typeof(Index)).Length;
             rooms = new int[Dungeon.nDivW, Dungeon.nDivH][];
             for (int x = 0; x < Dungeon.nDivW; x++)
@@ -75,8 +73,35 @@ namespace Rougelike
             doors = new Dictionary<int, Coordinates>();
             nHDoor = 0;
             hDoors = new Dictionary<int, Coordinates>();
-            chars = new Dictionary<Coordinates, GameObject>();
-            items = new Dictionary<Coordinates, List<GameObject>>();
+        }
+
+        int[] GeneratePermutation(int max, int length)
+        {
+            int[] d = new int[length];
+            int[] array = Enumerable.Range(1, max - 2).ToArray();
+            array = array.OrderBy(i => System.Guid.NewGuid()).ToArray();
+            for (int i = 1; i < d.Length - 1; i++)
+            {
+                d[i] = array[i % (max - 2)];
+            }
+            return d;
+        }
+
+        void _Modify(ref int[] dp, int[] dr)
+        {
+            int k = 1;
+            for (int _ = 0; _ < 2; _++)
+            {
+                if (dr[k] == 1 && dp[k] == 1)
+                {
+                    dp[k] = UnityEngine.Random.Range(2, nDivH - 2);
+                }
+                else if (dr[k] == nDivH - 2 && dp[k] == nDivH - 3)
+                {
+                    dp[k] = UnityEngine.Random.Range(1, nDivH - 3);
+                }
+                k = nDivW - 2;
+            }
         }
 
         void _Divide()
@@ -101,7 +126,7 @@ namespace Rougelike
             }
         }
 
-        void Room()
+        void _Room(int[] dr)
         {
             Coordinates roomIndex = new Coordinates(0, 0);
             for (int x = 1; x < nDivW - 1; x++)
@@ -111,6 +136,10 @@ namespace Rougelike
                 {
                     roomIndex.Y = y;
                     _SquareRoom(roomIndex, false);
+                    if(dr[x] != y)
+                    {
+                        roomIndices.Add(roomIndex);
+                    }
                 }
             }
         }
@@ -132,8 +161,7 @@ namespace Rougelike
             rooms[roomIndex.X, roomIndex.Y][(int)Index.height] = roomH;
             rooms[roomIndex.X, roomIndex.Y][(int)Index.xLeft] = xLeft;
             rooms[roomIndex.X, roomIndex.Y][(int)Index.yBottom] = yBottom;
-            rooms[roomIndex.X, roomIndex.Y][(int)Index.shape] = (int)Shape.square;
-            rooms[roomIndex.X, roomIndex.Y][(int)Index.type] = (hidden) ? (int)Type.hidden : (int)Type.normal;
+            rooms[roomIndex.X, roomIndex.Y][(int)Index.type] = (hidden) ? (int)RoomType.hidden : (int)RoomType.normal;
         }
 
         void _CircleRoom(Coordinates roomIndex)
@@ -158,8 +186,7 @@ namespace Rougelike
             rooms[roomIndex.X, roomIndex.Y][(int)Index.height] = size - abs_add_min * 2;
             rooms[roomIndex.X, roomIndex.Y][(int)Index.xLeft] = xLeft + abs_add_min;
             rooms[roomIndex.X, roomIndex.Y][(int)Index.yBottom] = yBottom + abs_add_min ;
-            rooms[roomIndex.X, roomIndex.Y][(int)Index.shape] = (int)Shape.circle;
-            rooms[roomIndex.X, roomIndex.Y][(int)Index.type] = (int)Type.hidden;
+            rooms[roomIndex.X, roomIndex.Y][(int)Index.type] = (int)RoomType.hidden;
         }
 
         void _OverwriteRLUDPath(int rlud)
@@ -249,35 +276,6 @@ namespace Rougelike
             }
         }
 
-        int[] GeneratePermutation(int max, int length)
-        {
-            int[] d = new int[length];
-            int[] array = Enumerable.Range(1, max - 2).ToArray();
-            array = array.OrderBy(i => System.Guid.NewGuid()).ToArray();
-            for (int i = 1; i < d.Length - 1; i++)
-            {
-                d[i] = array[i % (max - 2)];
-            }
-            return d;
-        }
-
-        void _Modify(ref int[] dp, int[] dr)
-        {
-            int k = 1;
-            for (int _ = 0; _ < 2; _++)
-            {
-                if (dr[k] == 1 && dp[k] == 1)
-                {
-                    dp[k] = UnityEngine.Random.Range(2, nDivH - 2);
-                }
-                else if (dr[k] == nDivH - 2 && dp[k] == nDivH - 3)
-                {
-                    dp[k] = UnityEngine.Random.Range(1, nDivH - 3);
-                }
-                k = nDivW - 2;
-            }
-        }
-
         void _DeletePath(int[] dp)
         {
             int x, bottomH, topH;
@@ -313,7 +311,7 @@ namespace Rougelike
                     }
                 }
                 Array.Clear(rooms[n, dr[n]], 0, 4);
-                rooms[n, dr[n]][(int)Index.type] = (int)Type.deleted;
+                rooms[n, dr[n]][(int)Index.type] = (int)RoomType.deleted;
             }
         }
 
@@ -440,7 +438,7 @@ namespace Rougelike
             }
         }
 
-        void HiddenRoom(int[] dr, int[] dp)
+        void _HiddenRoom(int[] dr, int[] dp)
         {
             int rlud;
             var roomIndex = new Coordinates(0, 0);
@@ -453,7 +451,7 @@ namespace Rougelike
                 if (dr[n] == 1 || dr[n] == nDivH - 2)
                 {
                     roomIndex.Y = (dr[n] == 1) ? 0 : nDivH - 1;
-                    _HiddenRoom(roomIndex, types[n - 1]);
+                    __HiddenRoom(roomIndex, types[n - 1]);
                     rlud = (dr[n] == 1) ? (int)Direction.up : (int)Direction.down;
                     _ConnectHiddenRoom(roomIndex, rlud);
                 }
@@ -461,14 +459,14 @@ namespace Rougelike
                 {
                     roomIndex.X = (n == 1) ? n - 1 : n + 1;
                     roomIndex.Y = dr[n];
-                    _HiddenRoom(roomIndex, types[n - 1]);
+                    __HiddenRoom(roomIndex, types[n - 1]);
                     rlud = (n == 1) ? (int)Direction.right : (int)Direction.left;
                     _ConnectHiddenRoom(roomIndex, rlud);
                 }
             }
         }
 
-        void _HiddenRoom(Coordinates roomIndex, int subCategory)
+        void __HiddenRoom(Coordinates roomIndex, int subCategory)
         {
             switch (subCategory)
             {
@@ -645,15 +643,6 @@ namespace Rougelike
             }
         }
 
-        public GameObject none;
-        public GameObject wall;
-        public GameObject floor;
-        public GameObject path;
-        public GameObject door;
-        public GameObject hFloor;
-        public GameObject hPath;
-        public GameObject hDoor;
-
         void Generate()
         {
             var p = new Vector3(0, 0, 0);
@@ -665,33 +654,7 @@ namespace Rougelike
                 {
                     p.x = x;
                     p.y = y;
-                    switch (map[x, y])
-                    {
-                        case (int)Tile.wall:
-                            Instantiate(wall, p, q);
-                            break;
-                        case (int)Tile.floor:
-                            Instantiate(floor, p, q);
-                            break;
-                        case (int)Tile.path:
-                            Instantiate(path, p, q);
-                            break;
-                        case (int)Tile.door:
-                            Instantiate(door, p, q);
-                            break;
-                        case (int)Tile.hFloor:
-                            Instantiate(hFloor, p, q);
-                            break;
-                        case (int)Tile.hPath:
-                            Instantiate(hPath, p, q);
-                            break;
-                        case (int)Tile.hDoor:
-                            Instantiate(hDoor, p, q);
-                            break;
-                        default:
-                            Instantiate(none, p, q);
-                            break;
-                    }
+                    Instantiate(MasterData.tiles[map[x, y]], p, q);
                 }
             }
         }

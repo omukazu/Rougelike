@@ -4,11 +4,11 @@ using UnityEngine;
 
 namespace Rougelike
 {
-    public class GameManager : MonoBehaviour
+    public class Sword : Item
     {
-        private void Start()
+        private Sword()
         {
-            Dungeon dungeon = new Dungeon();
+
         }
     }
 }
