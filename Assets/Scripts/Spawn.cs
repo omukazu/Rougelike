@@ -9,12 +9,12 @@ namespace Rougelike
 {
     public class Spawn : MonoBehaviour
     {
-        public GameObject player;
-        public Player pCache;
-        private int maxEnemies;
-        public List<GameObject> enemies;
-        public List<Enemy> eCaches;
-        public List<GameObject> scarecrows;
+        public static GameObject player;
+        public static Player pCache;
+        private static int maxEnemies;
+        public static List<GameObject> enemies;
+        public static List<Enemy> eCaches;
+        public static List<GameObject> scarecrows;
         public static Dictionary<Coordinates, GameObject> characters;
 
         private static int maxItems;
@@ -37,6 +37,9 @@ namespace Rougelike
             maxEnemies = 8;
             maxItems = 16;
 
+            enemies = new List<GameObject>();
+            eCaches = new List<Enemy>();
+            scarecrows = new List<GameObject>();
             characters = new Dictionary<Coordinates, GameObject>();
             items = new Dictionary<Coordinates, List<GameObject>>();
         }
@@ -54,7 +57,6 @@ namespace Rougelike
                 p.Y = Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.yBottom] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.height]);
                 position.x = p.X;
                 position.y = p.Y;
-
                 if (n == 0)
                 {
                     player = Instantiate(MasterData.playerObject, position, q) as GameObject;

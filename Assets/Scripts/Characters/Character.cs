@@ -11,6 +11,7 @@ namespace Rougelike {
         public int attack;
         public int defense;
         public float speed;
+        public int range;
 
         public void _Dead()
         {

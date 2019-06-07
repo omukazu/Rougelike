@@ -135,7 +135,7 @@ namespace Rougelike
                 for (int y = 1; y < nDivH - 1; y++)
                 {
                     roomIndex.Y = y;
-                    _SquareRoom(roomIndex, false);
+                    _SquareRoom(roomIndex, hidden:false);
                     if(dr[x] != y)
                     {
                         roomIndices.Add(roomIndex);
@@ -473,7 +473,7 @@ namespace Rougelike
                 case (int)HiddenSubCategory.challenge:
                 case (int)HiddenSubCategory.secret:
                 case (int)HiddenSubCategory.warehouse:
-                    _SquareRoom(roomIndex, true);
+                    _SquareRoom(roomIndex, hidden:true);
                     break;
                 case (int)HiddenSubCategory.garden:
                 case (int)HiddenSubCategory.spring:

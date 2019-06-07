@@ -2,457 +2,119 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-using System;
-
 namespace Rougelike
 {
-    public class Node
+    public class Action
     {
-        int heuristicCost;
-        Coordinates nodeCoordinates;
-        State state;
-        Node parentNode;
+        protected ActionPattern pattern;
+        protected Coordinates sourceP;
 
-        public int X { get { return nodeCoordinates.X; } }
-        public int Y { get { return nodeCoordinates.Y; } }
-        public int Cost { get; private set; }
-        public int Score { get { return Cost + heuristicCost; } }
-
-        public Node(Coordinates nodeCoordinates, Coordinates goal)
+        public ActionPattern P
         {
-            heuristicCost = Math.Max(Math.Abs(goal.X - nodeCoordinates.X), Math.Abs(goal.Y - nodeCoordinates.Y));
-            this.nodeCoordinates.X = nodeCoordinates.X;
-            this.nodeCoordinates.Y = nodeCoordinates.Y;
-            state = State.Unopened;
+            get { return pattern; }
         }
 
-        public void _Open(int cost, Node parentNode)
+        public virtual GameObject S
         {
-            Cost = cost;
-            this.parentNode = parentNode;
-            state = State.Opened;
+            get { return null; }
         }
-
-        public void _Close()
+        public virtual Coordinates Sc
         {
-            state = State.Closed;
+            get { return sourceP; }
         }
-
-        public bool IsNone()
+        public virtual GameObject T
         {
-            return state == State.Unopened;
+            get { return null; }
         }
-
-        public bool IsDoor()
+        public virtual Coordinates Tc
         {
-            return Dungeon.map[nodeCoordinates.X, nodeCoordinates.Y] == (int)Tile.door;
+            get { return sourceP; }
         }
-
-        public void _Path(List<Coordinates> path)
+        public virtual string Message
         {
-            path.Add(nodeCoordinates);
-            if (parentNode != null)
-            {
-                parentNode._Path(path);
-            }
-        }
-
-        public void _Door(List<Coordinates> door)
-        {
-            if (IsDoor())
-            {
-                door.Add(nodeCoordinates);
-            }
-
-            if (parentNode != null)
-            {
-                parentNode._Door(door);
-            }
+            get { return null; }
         }
     }
 
-    public class NodeControl
+    public class Step : Action
     {
-        Dictionary<Coordinates, GameObject> obstacles;
-        Dictionary<Coordinates, Node> nodes;
-        List<Node> openedNodes;
-        List<Node> closedNodes;
+        GameObject source;
+        Coordinates targetP;
 
-        public NodeControl(Dictionary<Coordinates, GameObject> obstacles)
+        public Step(ActionPattern pattern, GameObject source, Coordinates sourceP, Coordinates targetP)
         {
-            this.obstacles = obstacles;
+            this.pattern = pattern;
+            this.source = source;
+            this.sourceP = sourceP;
+            this.targetP = targetP;
         }
 
-        public void _AddOpenList(Node node)
+        public override GameObject S
         {
-            openedNodes.Add(node);
+            get { return source; }
         }
-
-        public void _AddClosedList(Node node)
+        public override Coordinates Sc
         {
-            openedNodes.Remove(node);
-            closedNodes.Add(node);
+            get { return sourceP; }
         }
-
-        public Node CreateNode(Coordinates nodeCoordinates, Coordinates goal)
+        public override Coordinates Tc
         {
-            if (nodes.ContainsKey(nodeCoordinates))
-            {
-                return nodes[nodeCoordinates];
-            }
-            var node = new Node(nodeCoordinates, goal);
-            nodes[nodeCoordinates] = node;
-            return node;
-        }
-
-        public Node OpenNode(Coordinates nodeCoordinates, Coordinates goal, int cost, Node parentNode)
-        {
-            if (!MasterData.nodeCandidates.Contains(Dungeon.map[nodeCoordinates.X, nodeCoordinates.Y]) || obstacles.ContainsKey(nodeCoordinates))
-            {
-                return null;
-            }
-
-            var node = CreateNode(nodeCoordinates, goal);
-            if (node.IsNone() == false)
-            {
-                return null;
-            }
-            node._Open(cost, parentNode);
-            _AddOpenList(node);
-            return node;
-        }
-
-        public int[,] SetDirection(Coordinates nodeCoordinates, Coordinates goal)
-        {
-            int[,] ru = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } };
-            int[,] rd = new int[8, 2] { { 1, 0 }, { 0, -1 }, { -1, 0 }, { 0, 1 }, { -1, 1 }, { 1, 1 }, { -1, -1 }, { 1, -1 } };
-            int[,] lu = new int[8, 2] { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 }, { 1, -1 }, { -1, -1 }, { 1, 1 }, { -1, 1 } };
-            int[,] ld = new int[8, 2] { { -1, 0 }, { 0, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 } };
-
-            if (goal.X > nodeCoordinates.X && goal.Y >= nodeCoordinates.Y)
-            {
-                return ru;
-            }
-            else if (goal.X >= nodeCoordinates.X && goal.Y < nodeCoordinates.Y)
-            {
-                return rd;
-            }
-            else if (goal.X <= nodeCoordinates.X && goal.Y > nodeCoordinates.Y)
-            {
-                return lu;
-            }
-            else  // if (goal.X < nodeCoordinates.X && goal.Y <= nodeCoordinates.Y)
-            {
-                return ld;
-            }
-        }
-
-        public void _OpenAround(Coordinates nodeCoordinates, Coordinates goal, Node parentNode)
-        {
-            int px = parentNode.X;
-            int py = parentNode.Y;
-            int cost = parentNode.Cost + 1;
-            int[,] direction = SetDirection(nodeCoordinates, goal);
-
-            for (int i = 0; i < 8; i++)
-            {
-                nodeCoordinates.X = px + direction[i, 0];
-                nodeCoordinates.Y = py + direction[i, 1];
-                OpenNode(nodeCoordinates, goal, cost, parentNode);
-            }
-        }
-
-        public Node MinimumScoreNode(Coordinates goal)
-        {
-            int minCost = 9999;
-            int minScore = 9999;
-            int score = minScore;
-            Node minNode = null;
-            foreach (Node node in openedNodes)
-            {
-                score = node.Score;
-                if (score > minScore)
-                {
-                    continue;
-                }
-                else if (score == minScore && node.Cost >= minCost)
-                {
-                    continue;
-                }
-                minScore = score;
-                minCost = node.Cost;
-                minNode = node;
-            }
-            return minNode;
+            get { return targetP; }
         }
     }
 
-    public class AstarAlgorithm
+    public class Swap : Action
     {
-        void _AstarAlgorithm(Coordinates start, Coordinates goal, ref List<Coordinates> list, Dictionary<Coordinates, GameObject> obstacles, bool door)
-        {
-            var nodeControl = new NodeControl(obstacles);
-            var node = nodeControl.OpenNode(start, goal, 0, null);
+        GameObject source;
+        GameObject target;
+        Coordinates targetP;
 
-            int count = 0;
-            while (count < 9999)
-            {
-                nodeControl._AddClosedList(node);
-                nodeControl._OpenAround(start, goal, node);
-                node = nodeControl.MinimumScoreNode(goal);
-                if (node == null)
-                {
-                    break;
-                }
-                else if (node.X == goal.X && node.Y == goal.Y)
-                {
-                    nodeControl._AddClosedList(node);
-                    if (door)
-                    {
-                        node._Door(list);
-                        list.Reverse();
-                    }
-                    else
-                    {
-                        node._Path(list);
-                        list.Reverse();
-                        list.RemoveAt(0);
-                    }
-                    break;
-                }
-                count++;
-            }
+        public Swap(ActionPattern pattern, GameObject source, Coordinates sourceP, GameObject target, Coordinates targetP)
+        {
+            this.pattern = pattern;
+            this.source = source;
+            this.sourceP = sourceP;
+            this.target = target;
+            this.targetP = targetP;
         }
 
-        public void _SearchPath(Coordinates start, Coordinates goal, ref List<Coordinates> path, Dictionary<Coordinates, GameObject> obstacles, bool seek)
+        public override GameObject S
         {
-            if (MasterData.nodeCandidates.Contains(Dungeon.map[goal.X, goal.Y]))
-            {
-                var door = new List<Coordinates>();
-                var partialPath = new List<Coordinates>();
-                _AstarAlgorithm(start, goal, ref door, obstacles, true);
-
-                if (door.Count == 0)
-                {
-                    _AstarAlgorithm(start, goal, ref path, obstacles, false);
-                }
-                else
-                {
-                    int index = 0;
-                    var destination = goal;
-                    while (index <= door.Count)
-                    {
-                        start = (index > 0) ? door[index - 1] : start;
-                        goal = (index < door.Count) ? door[index] : goal;
-
-                        if (index == door.Count)
-                        {
-                            if (seek) { return; }
-                            else { goal = destination; }
-                        }
-
-                        _AstarAlgorithm(start, goal, ref partialPath, obstacles, false);
-                        path.AddRange(partialPath);
-                        partialPath.Clear();
-                        index++;
-                    }
-                }
-            }
-            else
-            {
-                return;
-            }
+            get { return source; }
+        }
+        public override Coordinates Sc
+        {
+            get { return sourceP; }
+        }
+        public override GameObject T
+        {
+            get { return target; }
+        }
+        public override Coordinates Tc
+        {
+            get { return targetP; }
         }
     }
 
-    public class Obstacle
+    public class Attack : Action
     {
-        void _UpdateSight(Coordinates p)
+        string message;
+
+        public Attack(ActionPattern pattern, Coordinates sourceP, string message)
         {
-            //UI.sight[p.X, p.Y] = 1;
-            //if (Dungeon.map[p.X - 1, p.Y] > 4)
-            //{
-            //    UI.periphery[p.X - 1, p.Y] = 1;
-            //}
-            //if (Dungeon.map[p.X + 1, p.Y] > 4)
-            //{
-            //    UI.periphery[p.X + 1, p.Y] = 1;
-            //}
-            //if (Dungeon.map[p.X, p.Y - 1] > 4)
-            //{
-            //    UI.periphery[p.X, p.Y - 1] = 1;
-            //}
-            //if (Dungeon.map[p.X, p.Y + 1] > 4)
-            //{
-            //    UI.periphery[p.X, p.Y + 1] = 1;
-            //}
+            this.pattern = pattern;
+            this.sourceP = sourceP;
+            this.message = message;
         }
 
-        void _SetParameters(ref int[] ij, ref int[] xy, Direction rlud)
+        public override Coordinates Sc
         {
-            if (rlud == Direction.right)
-            {
-                ij[0] = 1;
-                xy[1] = 1;
-            }
-            else if (rlud == Direction.left)
-            {
-                ij[0] = -1;
-                xy[1] = 1;
-            }
-            else if (rlud == Direction.up)
-            {
-                ij[1] = 1;
-                xy[0] = 1;
-            }
-            else if (rlud == Direction.down)
-            {
-                ij[1] = -1;
-                xy[0] = 1;
-            }
+            get { return sourceP; }
         }
-
-        void __ExpandSight(Coordinates start, List<int> list, int[] xy, int rw, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
+        public override string Message
         {
-            if (list.Count > 0)
-            {
-                int x = 0, y = 0;
-                var p = start;
-                foreach (int l in list)
-                {
-                    x = l * xy[1];
-                    y = l * xy[0];
-                    p.X = start.X + x + rw * xy[0];
-                    p.Y = start.Y + y + rw * xy[1];
-                    _UpdateObstacles(p, ref obstacles, player);
-                    if (Math.Abs(l) == 1)
-                    {
-                        p.X = start.X + x + rw * xy[0] * 2;
-                        p.Y = start.Y + y + rw * xy[1] * 2;
-                        if (MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
-                        {
-                            _UpdateObstacles(p, ref obstacles, player);
-                        }
-                        p.X = start.X + x * 2 + rw * xy[0];
-                        p.Y = start.Y + y * 2 + rw * xy[1];
-                        if (MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
-                        {
-                            _UpdateObstacles(p, ref obstacles, player);
-                        }
-                    }
-                }
-            }
+            get { return message; }
         }
-
-        void _ExpandSight(Coordinates start, Direction rlud, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
-        {
-            int[] ij = new int[2], xy = new int[2];
-            _SetParameters(ref ij, ref xy, rlud);
-            int i = ij[0], j = ij[1];
-            var p = start;
-            List<int> one = new List<int>(), theOther = new List<int>();
-
-            while (Dungeon.map[start.X + i, start.Y + j] == 3 || Dungeon.map[start.X + i, start.Y + j] == 4)
-            {
-                p.X = start.X + i;
-                p.Y = start.Y + j;
-                _UpdateObstacles(p, ref obstacles, player);
-                if (Dungeon.map[p.X + xy[0], p.Y + xy[1]] == (int)Tile.path || Dungeon.map[p.X + xy[0], p.Y + xy[1]] == (int)Tile.door)
-                {
-                    one.Add(j * xy[0] + i * xy[1]);
-                }
-
-                if (Dungeon.map[p.X - xy[0], p.Y - xy[1]] == (int)Tile.path || Dungeon.map[p.X - xy[0], p.Y - xy[1]] == (int)Tile.door)
-                {
-                    theOther.Add(j * xy[0] + i * xy[1]);
-                }
-                i += ij[0];
-                j += ij[1];
-
-                if (Math.Abs(i) > 7 || Math.Abs(j) > 7)
-                {
-                    break;
-                }
-            }
-
-            __ExpandSight(start, one, xy, 1, ref obstacles, player);
-            __ExpandSight(start, theOther, xy, -1, ref obstacles, player);
-        }
-
-        void _UpdateObstacles(Coordinates p, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
-        {
-            if (Spawn.characters.ContainsKey(p))
-            {
-                obstacles[p] = Spawn.characters[p];
-            }
-
-            if (player && MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
-            {
-                _UpdateSight(p);
-            }
-        }
-
-        void _SetObstacles(Coordinates start, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
-        {
-            int x = 1 + (start.X / (Dungeon.unitW + 1)) * (Dungeon.unitW + 1);
-            int y = 1 + (start.Y / (Dungeon.unitH + 1)) * (Dungeon.unitH + 1);
-            var p = new Coordinates(x, y);
-
-            _UpdateSight(start);
-            if (Dungeon.map[start.X, start.Y] == (int)Tile.floor)
-            {
-                for (int i = 0; i < Dungeon.unitW; i++)
-                {
-                    for (int j = 0; j < Dungeon.unitH; j++)
-                    {
-                        p.X = x + i;
-                        p.Y = y + j;
-                        if ((start.X != p.X || start.Y != p.Y) && (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door))
-                        {
-                            _UpdateObstacles(p, ref obstacles, player);
-                        }
-                    }
-                }
-            }
-            else if (Dungeon.map[start.X, start.Y] == (int)Tile.door)
-            {
-                for (int i = 0; i < Dungeon.unitW; i++)
-                {
-                    for (int j = 0; j < Dungeon.unitH; j++)
-                    {
-                        p.X = x + i;
-                        p.Y = y + j;
-                        if ((start.X != p.X || start.Y != p.Y) && (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door))
-                        {
-                            _UpdateObstacles(p, ref obstacles, player);
-                        }
-                    }
-                }
-                if (Dungeon.map[start.X - 1, start.Y] == (int)Tile.floor)
-                {
-                    _ExpandSight(start, Direction.right, ref obstacles, player);
-                }
-                else if (Dungeon.map[start.X + 1, start.Y] == (int)Tile.floor)
-                {
-                    _ExpandSight(start, Direction.left, ref obstacles, player);
-                }
-                else if (Dungeon.map[start.X, start.Y - 1] == (int)Tile.floor)
-                {
-                    _ExpandSight(start, Direction.up, ref obstacles, player);
-                }
-                else if (Dungeon.map[start.X, start.Y + 1] == (int)Tile.floor)
-                {
-                    _ExpandSight(start, Direction.down, ref obstacles, player);
-                }
-            }
-            else if (Dungeon.map[start.X, start.Y] == (int)Tile.path)
-            {
-                _ExpandSight(start, Direction.right, ref obstacles, player);
-                _ExpandSight(start, Direction.left, ref obstacles, player);
-                _ExpandSight(start, Direction.up, ref obstacles, player);
-                _ExpandSight(start, Direction.down, ref obstacles, player);
-            }
-        }
-
     }
+
 }

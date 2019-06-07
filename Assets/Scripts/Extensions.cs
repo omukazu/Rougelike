@@ -25,13 +25,19 @@ namespace Rougelike
         }
     }
 
-    static class ListExtensions
+    static class DictionaryExtensions
     {
-        public static T Pop<T>(this List<T> self)
+        public static void RemoveByValue<TKey, TValue>(this Dictionary<TKey, TValue> self, TValue value)
         {
-            var result = self[0];
-            self.RemoveAt(0);
-            return result;
+            var removeKeys = self
+                .Where(x => EqualityComparer<TValue>.Default.Equals(x.Value, value))
+                .Select(x => x.Key)
+                .ToArray();
+
+            foreach (var key in removeKeys)
+            {
+                self.Remove(key);
+            }
         }
     }
 
@@ -43,6 +49,21 @@ namespace Rougelike
             {
                 yield return f(element);
             }
+        }
+    }
+
+    static class ListExtensions
+    {
+        public static T Pop<T>(this List<T> self)
+        {
+            var result = self[0];
+            self.RemoveAt(0);
+            return result;
+        }
+
+        public static HashSet<T> ToHashSet<T>(this List<T> self)
+        {
+            return new HashSet<T>(self);
         }
     }
 }

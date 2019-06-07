@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Rougelike
 {
+    // for Dungeon.cs
     enum Index : int
     {
         width = 0,
@@ -112,11 +113,27 @@ namespace Rougelike
         sandals = 2
     }
 
-    // for action.cs
+    // for Move.cs
     enum State
     {
-        None,
-        Open,
-        Closed
+        unopened,
+        opened,
+        closed
+    }
+
+    // for Control.cs
+    enum Branch
+    {
+        none,
+        attack,
+        moveToEnemy,
+        walk
+    }
+
+    public enum ActionPattern
+    {
+        step,
+        swap,
+        attack
     }
 }
