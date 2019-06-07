@@ -12,3 +12,8 @@ In progress
 
 ![54](https://github.com/omukazu/Rougelike/blob/images/images/54demo.png)
 
+
+
+## Stepwise Execution Demo
+
+![stepwise](https://github.com/omukazu/Rougelike/blob/images/images/stepwise_demo.gif)

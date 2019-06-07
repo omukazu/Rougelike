@@ -273,7 +273,7 @@ namespace Rougelike
                 sourceComponent = sortedECaches[k];
                 for (int i = 0; i < (int)sortedECaches[k].speed; i++)
                 {
-                    sourceComponent.obstacles = ObstacleSetter.GetObstacles(sourceComponent.p, sourceComponent.targetObject, false);
+                    sourceComponent.obstacles = ObstacleSetter.GetObstacles(sourceComponent.p, null, false);
                     target = SetTarget(sourceComponent);  // player or scarecrow
                     if (target == null)
                     {
@@ -381,7 +381,7 @@ namespace Rougelike
 
                 destination = Dungeon.doors[sourceComponent.doorNumbers[0]];
                 sourceComponent.targetDoorNumber = sourceComponent.doorNumbers.Pop();
-                sourceComponent.path = AstarAlgorithm.GetPath(sourceComponent.p, destination, empty, true);
+                sourceComponent.path = AstarAlgorithm.GetPath(sourceComponent.p, destination, empty, seek: true);
             } while (sourceComponent.path.Count == 0);
         }
 

@@ -65,3 +65,6 @@ crashlytics-build.properties
 Assets/UnityVS
 Assets/Animations
 Assets/Resources
+Assets/Fsp/
+Assets/StreamingAssets/
+Assets/UTJ/
