@@ -103,7 +103,7 @@ namespace Rougelike
 
                 if (UI.isUI(raycastResult, ref targetUI))
                 {
-
+                    return Branch.none;
                 }
             }
             if(true)  // There is no UI on the screen → walk, attack or moveToEnemy
