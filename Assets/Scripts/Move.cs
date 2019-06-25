@@ -267,7 +267,7 @@ namespace Rougelike
 
     public static class ObstacleSetter
     {
-        public static Dictionary<Coordinates, GameObject> GetObstacles(Coordinates start, GameObject target, bool player)
+        public static Dictionary<Coordinates, GameObject> GetObstacles(Coordinates start, GameObject target, bool isPlayer)
         {
             Dictionary<Coordinates, GameObject> obstacles = new Dictionary<Coordinates, GameObject>();
             int x = 1 + (start.X / (Dungeon.unitW + 1)) * (Dungeon.unitW + 1);
@@ -285,7 +285,7 @@ namespace Rougelike
                         p.Y = y + j;
                         if ((start.X != p.X || start.Y != p.Y) && (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door))
                         {
-                            _SetObstacle(p, ref obstacles, player);
+                            _SetObstacle(p, ref obstacles, isPlayer);
                         }
                     }
                 }
@@ -300,33 +300,33 @@ namespace Rougelike
                         p.Y = y + j;
                         if ((start.X != p.X || start.Y != p.Y) && (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door))
                         {
-                            _SetObstacle(p, ref obstacles, player);
+                            _SetObstacle(p, ref obstacles, isPlayer);
                         }
                     }
                 }
                 if (Dungeon.map[start.X - 1, start.Y] == (int)Tile.floor)
                 {
-                    _ExpandSight(start, Direction.right, ref obstacles, player);
+                    _ExpandSight(start, Direction.right, ref obstacles, isPlayer);
                 }
                 else if (Dungeon.map[start.X + 1, start.Y] == (int)Tile.floor)
                 {
-                    _ExpandSight(start, Direction.left, ref obstacles, player);
+                    _ExpandSight(start, Direction.left, ref obstacles, isPlayer);
                 }
                 else if (Dungeon.map[start.X, start.Y - 1] == (int)Tile.floor)
                 {
-                    _ExpandSight(start, Direction.up, ref obstacles, player);
+                    _ExpandSight(start, Direction.up, ref obstacles, isPlayer);
                 }
                 else if (Dungeon.map[start.X, start.Y + 1] == (int)Tile.floor)
                 {
-                    _ExpandSight(start, Direction.down, ref obstacles, player);
+                    _ExpandSight(start, Direction.down, ref obstacles, isPlayer);
                 }
             }
             else if (Dungeon.map[start.X, start.Y] == (int)Tile.path)
             {
-                _ExpandSight(start, Direction.right, ref obstacles, player);
-                _ExpandSight(start, Direction.left, ref obstacles, player);
-                _ExpandSight(start, Direction.up, ref obstacles, player);
-                _ExpandSight(start, Direction.down, ref obstacles, player);
+                _ExpandSight(start, Direction.right, ref obstacles, isPlayer);
+                _ExpandSight(start, Direction.left, ref obstacles, isPlayer);
+                _ExpandSight(start, Direction.up, ref obstacles, isPlayer);
+                _ExpandSight(start, Direction.down, ref obstacles, isPlayer);
             }
 
             if (target != null)
@@ -336,14 +336,14 @@ namespace Rougelike
             return obstacles;
         }
 
-        static void _SetObstacle(Coordinates p, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
+        static void _SetObstacle(Coordinates p, ref Dictionary<Coordinates, GameObject> obstacles, bool isPlayer)
         {
             if (Spawn.characters.ContainsKey(p))
             {
                 obstacles[p] = Spawn.characters[p];
             }
 
-            if (player && MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
+            if (isPlayer && MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
             {
                 _SetSight(p);
             }
@@ -370,7 +370,7 @@ namespace Rougelike
             //}
         }
 
-        static void _ExpandSight(Coordinates start, Direction rlud, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
+        static void _ExpandSight(Coordinates start, Direction rlud, ref Dictionary<Coordinates, GameObject> obstacles, bool isPlayer)
         {
             int[] ij = new int[2], xy = new int[2];
             _SetParameters(ref ij, ref xy, rlud);
@@ -382,7 +382,7 @@ namespace Rougelike
             {
                 p.X = start.X + i;
                 p.Y = start.Y + j;
-                _SetObstacle(p, ref obstacles, player);
+                _SetObstacle(p, ref obstacles, isPlayer);
                 if (Dungeon.map[p.X + xy[0], p.Y + xy[1]] == (int)Tile.path || Dungeon.map[p.X + xy[0], p.Y + xy[1]] == (int)Tile.door)
                 {
                     one.Add(j * xy[0] + i * xy[1]);
@@ -401,11 +401,11 @@ namespace Rougelike
                 }
             }
 
-            __ExpandSight(start, one, xy, 1, ref obstacles, player);
-            __ExpandSight(start, theOther, xy, -1, ref obstacles, player);
+            __ExpandSight(start, one, xy, 1, ref obstacles, isPlayer);
+            __ExpandSight(start, theOther, xy, -1, ref obstacles, isPlayer);
         }
 
-        static void __ExpandSight(Coordinates start, List<int> list, int[] xy, int rw, ref Dictionary<Coordinates, GameObject> obstacles, bool player)
+        static void __ExpandSight(Coordinates start, List<int> list, int[] xy, int rw, ref Dictionary<Coordinates, GameObject> obstacles, bool isPlayer)
         {
             if (list.Count > 0)
             {
@@ -417,20 +417,20 @@ namespace Rougelike
                     y = l * xy[0];
                     p.X = start.X + x + rw * xy[0];
                     p.Y = start.Y + y + rw * xy[1];
-                    _SetObstacle(p, ref obstacles, player);
+                    _SetObstacle(p, ref obstacles, isPlayer);
                     if (Math.Abs(l) == 1)
                     {
                         p.X = start.X + x + rw * xy[0] * 2;
                         p.Y = start.Y + y + rw * xy[1] * 2;
                         if (MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
                         {
-                            _SetObstacle(p, ref obstacles, player);
+                            _SetObstacle(p, ref obstacles, isPlayer);
                         }
                         p.X = start.X + x * 2 + rw * xy[0];
                         p.Y = start.Y + y * 2 + rw * xy[1];
                         if (MasterData.nodeCandidates.Contains(Dungeon.map[p.X, p.Y]))
                         {
-                            _SetObstacle(p, ref obstacles, player);
+                            _SetObstacle(p, ref obstacles, isPlayer);
                         }
                     }
                 }

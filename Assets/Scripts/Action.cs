@@ -13,7 +13,6 @@ namespace Rougelike
         {
             get { return pattern; }
         }
-
         public virtual GameObject S
         {
             get { return null; }

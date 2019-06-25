@@ -612,8 +612,8 @@ namespace Rougelike
 
         void _Door()
         {
-            HashSet<int> disused = new HashSet<int>(){ (int)Tile.end, (int)Tile.border, (int)Tile.division };
-            Coordinates door = new Coordinates(0, 0);
+            var disused = new HashSet<int>(){ (int)Tile.end, (int)Tile.border, (int)Tile.division };
+            var door = new Coordinates(0, 0);
             for (int j = 0; j < height; j++)
             {
                 for (int i = 0; i < width; i++)

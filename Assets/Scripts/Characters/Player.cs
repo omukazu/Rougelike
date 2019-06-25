@@ -10,6 +10,8 @@ namespace Rougelike
         public List<Coordinates> path;
         public GameObject targetObject;
 
+        public bool attacked;
+
         public Player()
         {
             obstacles = new Dictionary<Coordinates, GameObject>();
@@ -20,6 +22,7 @@ namespace Rougelike
             attack = 4;
             defense = 2;
             speed = 1.0f;
+            attacked = false;
         }
     }
 }

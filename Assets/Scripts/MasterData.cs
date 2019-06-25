@@ -24,7 +24,7 @@ namespace Rougelike
         // for Move.cs
         public static HashSet<int> nodeCandidates { get; private set; }
 
-        // for Control.cs
+        // for CharacterControl.cs
         public static GameObject pointer;
 
         private void Start()

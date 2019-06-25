@@ -4,6 +4,8 @@ using UnityEngine;
 
 using System;
 using System.Linq;
+using UnityEngine.EventSystems;
+
 
 namespace Rougelike
 {
@@ -12,6 +14,7 @@ namespace Rougelike
         private GameObject pointer;
 
         private static bool playerTurn;
+        private static bool interrupt;
 
         private Dictionary<Coordinates, GameObject> empty;
         public List<Action> actionSequence;
@@ -28,6 +31,7 @@ namespace Rougelike
             actionSequence = new List<Action>();
 
             playerTurn = true;
+            interrupt = false;
         }
 
         void Update()
@@ -40,12 +44,88 @@ namespace Rougelike
 
             if (playerTurn)
             {
-                if (Input.GetKeyDown(KeyCode.Space))
+                interrupt = false;
+                if (Input.GetMouseButtonDown(0))
+                {
+                    var mousePosition = Input.mousePosition;
+                    mousePosition.z = -1.0f;
+                    var start = Spawn.pCache.p;
+                    var goal = TransformMouseInput(mousePosition);
+                    var branch = GetBranch(mousePosition, start, goal);
+                    switch (branch)
+                    {
+                        case Branch.attack:
+                            break;
+                        case Branch.moveToEnemy:
+                            playerTurn = false;
+                            StartCoroutine(MoveToEnemy(Spawn.characters[goal]));
+                            break;
+                        case Branch.walk:
+                            playerTurn = false;
+                            StartCoroutine(Walk(start, goal));
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else if (Input.GetKeyDown(KeyCode.Space))
                 {
                     playerTurn = false;
                     StartCoroutine(Waiting());
                 }
             }
+            else
+            {
+                if (Input.GetMouseButtonDown(0))  // interrupt player's action
+                {
+                    interrupt = true;
+                }
+            }
+        }
+
+        Coordinates TransformMouseInput(Vector3 mousePosition)
+        {
+            var pos = Camera.main.ScreenToWorldPoint(mousePosition);
+            int x = (int)Math.Round(pos.x, 0, MidpointRounding.AwayFromZero);
+            int y = (int)Math.Round(pos.y, 0, MidpointRounding.AwayFromZero);
+            return new Coordinates(x, y);
+        }
+
+        Branch GetBranch(Vector3 mousePosition, Coordinates start, Coordinates goal)
+        {
+            if (EventSystem.current != null)
+            {
+                var ped = new PointerEventData(EventSystem.current);
+                ped.position = mousePosition;
+                var raycastResult = new List<RaycastResult>();
+                EventSystem.current.RaycastAll(ped, raycastResult);
+                GameObject targetUI = null;
+
+                if (UI.isUI(raycastResult, ref targetUI))
+                {
+
+                }
+            }
+            if(true)  // There is no UI on the screen → walk, attack or moveToEnemy
+            {
+                if (EnemyDetected(goal))
+                {
+                    if (Attacks(Spawn.player, Spawn.pCache, Spawn.characters[goal], goal))
+                    {
+                        return Branch.attack;
+                    }
+                    else if (Math.Max(Math.Abs(goal.X - start.X), Math.Abs(goal.Y - start.Y)) > Spawn.pCache.range)
+                    {
+                        return Branch.moveToEnemy;
+                    }
+                }
+                else if (MasterData.nodeCandidates.Contains(Dungeon.map[goal.X, goal.Y]) && !Spawn.characters.ContainsKey(goal))
+                {
+                    return Branch.walk;
+                }
+            }
+            
+            return Branch.none;
         }
 
         float CalculateTime()
@@ -89,6 +169,98 @@ namespace Rougelike
                 time += 0.1f;
             }
             return time;
+        }
+
+        bool Stop(Coordinates nextStep)
+        {
+            if (Spawn.characters.ContainsKey(nextStep) || Spawn.pCache.attacked || interrupt)
+            {
+                return true;
+            }
+
+            var periphery = nextStep;
+            var direction = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
+            for (int i = 0; i < 8; i++)
+            {
+                periphery.X = nextStep.X + direction[i, 0];
+                periphery.Y = nextStep.Y + direction[i, 1];
+                if (EnemyDetected(periphery))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool Reach(Coordinates p, GameObject target)
+        {
+            var periphery = p;
+            var direction = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
+            for (int i = 0; i < 8; i++)
+            {
+                periphery.X = p.X + direction[i, 0];
+                periphery.Y = p.Y + direction[i, 1];
+                if(Spawn.characters.ContainsKey(periphery) && Spawn.characters[periphery] == target)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        IEnumerator Walk(Coordinates start, Coordinates goal)
+        {
+            var obstacles = ObstacleSetter.GetObstacles(start, target: null, isPlayer: true);
+            var path = AstarAlgorithm.GetPath(start, goal, obstacles, seek: false);
+            var time = 0f;
+
+            for (int n = 0; n < path.Count; n++)
+            {
+                //移動中止のチェック
+                if (n > 0 && Stop(path[n]))
+                {
+                    break;
+                }
+                StartCoroutine(Steping(Spawn.player, Spawn.pCache.p, path[n]));
+                _Synchronize(Spawn.player, Spawn.pCache, Spawn.pCache.p, path[n]);
+                _Wait();
+                time = CalculateTime();
+                StartCoroutine(ActEnemies());
+                yield return new WaitForSecondsRealtime(time);
+            }
+            playerTurn = true;
+        }
+
+        IEnumerator MoveToEnemy(GameObject target)
+        {
+            var time = 0f;
+            var targetComponent = target.GetComponent<Enemy>();
+            Coordinates step;
+
+            do
+            {
+                var start = Spawn.pCache.p;
+                var goal = targetComponent.p;
+                var path = AstarAlgorithm.GetPath(start, goal, empty, seek: false);
+                if (Spawn.characters.ContainsKey(path[0]))
+                {
+                    var obstacles = ObstacleSetter.GetObstacles(start, target: null, isPlayer: true);
+                    path = AstarAlgorithm.GetPath(start, goal, obstacles, seek: false);
+                    if (path.Count == 0)
+                    {
+                        break;
+                    }
+                }
+                step = path.Pop();
+
+                StartCoroutine(Steping(Spawn.player, Spawn.pCache.p, step));
+                _Synchronize(Spawn.player, Spawn.pCache, Spawn.pCache.p, step);
+                _Wait();
+                time = CalculateTime();
+                StartCoroutine(ActEnemies());
+                yield return new WaitForSecondsRealtime(time);
+            } while (Reach(step, target));
+            playerTurn = true;
         }
 
         IEnumerator Waiting()
@@ -172,15 +344,6 @@ namespace Rougelike
             targetPosition.y = sourceP.Y;
             source.transform.position = sourcePosition;
             target.transform.position = targetPosition;
-        }
-
-        Coordinates TransformMouseInput(Vector3 mousePosition)
-        {
-            mousePosition.z = -1.0f;
-            var pos = Camera.main.ScreenToWorldPoint(mousePosition);
-            int x = (int)Math.Round(pos.x, 0, MidpointRounding.AwayFromZero);
-            int y = (int)Math.Round(pos.y, 0, MidpointRounding.AwayFromZero);
-            return new Coordinates(x, y);
         }
 
         (List<GameObject>, List<Enemy>) CalculateDistance()
@@ -415,7 +578,7 @@ namespace Rougelike
             var sourceP = sourceComponent.p;
             var targetP = targetComponent.p;
             var shortest = AstarAlgorithm.GetPath(sourceP, targetP, empty, seek: false);
-            var obstacles = ObstacleSetter.GetObstacles(sourceP, target: target, player: false);
+            var obstacles = ObstacleSetter.GetObstacles(sourceP, target: target, isPlayer: false);
             var detour = AstarAlgorithm.GetPath(sourceP, targetP, obstacles, seek: false);
 
             sourceComponent.path.Clear();
@@ -465,7 +628,7 @@ namespace Rougelike
                 _Synchronize(source, sourceComponent, sourceP, p);
             }
         }
-
+        
         bool Attacks(GameObject source, Character sourceComponent, GameObject target, Coordinates targetP)
         {
             var sourceP = sourceComponent.p;
