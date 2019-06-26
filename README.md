@@ -14,6 +14,10 @@ In progress
 
 
 
-## Stepwise Execution Demo
+## Sample
 
-![stepwise](https://github.com/omukazu/Rougelike/blob/images/images/stepwise_demo.gif)
+Player: blue circle, Enemies: white circle
+
+A* algorithm is used to find a path to destination
+
+![search](https://github.com/omukazu/Rougelike/blob/images/images/search.gif)
