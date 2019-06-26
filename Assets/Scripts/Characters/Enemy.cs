@@ -24,7 +24,7 @@ namespace Rougelike
             obstacles = new Dictionary<Coordinates, GameObject>();
             path = new List<Coordinates>();
             targetObject = null;
-            patient = 0;
+            patient = 5;
             collisionDetected = false;
             chase = false;
             swap = false;

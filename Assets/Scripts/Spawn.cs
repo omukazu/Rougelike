@@ -34,7 +34,7 @@ namespace Rougelike
 
         public void _Initialize()
         {
-            maxEnemies = 8;
+            maxEnemies = 4;
             maxItems = 16;
 
             enemies = new List<GameObject>();
@@ -51,7 +51,7 @@ namespace Rougelike
             var p = new Coordinates(0, 0);  //manage gamaobjects by Coordinates
             var position = new Vector3(0, 0, 0);
             var q = Quaternion.identity;
-            for (int n = 0; n < roomIndices.Count; n++)
+            for (int n = 0; n < 1; n++)
             {
                 p.X = Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.xLeft] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.width]);
                 p.Y = Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.yBottom] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.height]);

@@ -67,6 +67,13 @@ namespace Rougelike
         tree = 6,
     }
 
+    public enum Explore
+    {
+        unknown,
+        found,
+        explored
+    }
+
     // for Spawn.cs
     enum Enemies : int
     {

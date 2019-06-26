@@ -210,7 +210,7 @@ namespace Rougelike
 
         IEnumerator Walk(Coordinates start, Coordinates goal)
         {
-            var obstacles = ObstacleSetter.GetObstacles(start, target: null, isPlayer: true);
+            var obstacles = ObstacleSetter.GetObstacles(start, target: null);
             var path = AstarAlgorithm.GetPath(start, goal, obstacles, seek: false);
             var time = 0f;
 
@@ -221,8 +221,10 @@ namespace Rougelike
                 {
                     break;
                 }
+
                 StartCoroutine(Steping(Spawn.player, Spawn.pCache.p, path[n]));
                 _Synchronize(Spawn.player, Spawn.pCache, Spawn.pCache.p, path[n]);
+                Updater.update = true;
                 _Wait();
                 time = CalculateTime();
                 StartCoroutine(ActEnemies());
@@ -244,7 +246,7 @@ namespace Rougelike
                 var path = AstarAlgorithm.GetPath(start, goal, empty, seek: false);
                 if (Spawn.characters.ContainsKey(path[0]))
                 {
-                    var obstacles = ObstacleSetter.GetObstacles(start, target: null, isPlayer: true);
+                    var obstacles = ObstacleSetter.GetObstacles(start, target: target);
                     path = AstarAlgorithm.GetPath(start, goal, obstacles, seek: false);
                     if (path.Count == 0)
                     {
@@ -255,6 +257,7 @@ namespace Rougelike
 
                 StartCoroutine(Steping(Spawn.player, Spawn.pCache.p, step));
                 _Synchronize(Spawn.player, Spawn.pCache, Spawn.pCache.p, step);
+                Updater.update = true;
                 _Wait();
                 time = CalculateTime();
                 StartCoroutine(ActEnemies());
@@ -414,6 +417,10 @@ namespace Rougelike
                     return Spawn.player;
                 }
             }
+            else if (sourceComponent.chase)
+            {
+                return Spawn.player;
+            }
             return null;
         }
 
@@ -436,7 +443,7 @@ namespace Rougelike
                 sourceComponent = sortedECaches[k];
                 for (int i = 0; i < (int)sortedECaches[k].speed; i++)
                 {
-                    sourceComponent.obstacles = ObstacleSetter.GetObstacles(sourceComponent.p, null, false);
+                    sourceComponent.obstacles = ObstacleSetter.GetObstacles(sourceComponent.p, target: null);
                     target = SetTarget(sourceComponent);  // player or scarecrow
                     if (target == null)
                     {
@@ -444,7 +451,7 @@ namespace Rougelike
                         sourceComponent.chase = false;
                         _Seek(source, sourceComponent);  // does not find or gives up chasing a target
                     }
-                    else  // perceive a target
+                    else  // perceive a target or chase
                     {
                         _Reset(sourceComponent);
                         sourceComponent.targetObject = target;
@@ -459,6 +466,15 @@ namespace Rougelike
                         else
                         {
                             _Chase(source, sourceComponent, target, targetComponent);
+                            if (!sourceComponent.obstacles.ContainsValue(Spawn.player))
+                            {
+                                sourceComponent.patient -= 1;
+                                if (sourceComponent.patient <= 0)
+                                {
+                                    sourceComponent.patient = 5;
+                                    sourceComponent.chase = false;
+                                }
+                            }
                         }
                     }
                 }
@@ -510,7 +526,9 @@ namespace Rougelike
                         else if (targetComponent.collisionDetected && targetComponent.collisionObject == source && !targetComponent.swap)
                         {
                             _Reset(sourceComponent);
+                            sourceComponent.patient = 5;
                             _Reset(targetComponent);
+                            targetComponent.patient = 5;
                             targetComponent.swap = true;
                             actionSequence.Add(new Swap(ActionPattern.swap, source, sourceP, Spawn.characters[step], step));
                             sourceComponent.path.RemoveAt(0);
@@ -552,7 +570,6 @@ namespace Rougelike
         {
             component.collisionDetected = false;
             component.collisionObject = null;
-            component.patient = 5;
         }
 
         void _Synchronize(GameObject source, Character sourceComponent, Coordinates before, Coordinates after)
@@ -578,7 +595,7 @@ namespace Rougelike
             var sourceP = sourceComponent.p;
             var targetP = targetComponent.p;
             var shortest = AstarAlgorithm.GetPath(sourceP, targetP, empty, seek: false);
-            var obstacles = ObstacleSetter.GetObstacles(sourceP, target: target, isPlayer: false);
+            var obstacles = ObstacleSetter.GetObstacles(sourceP, target: target);
             var detour = AstarAlgorithm.GetPath(sourceP, targetP, obstacles, seek: false);
 
             sourceComponent.path.Clear();

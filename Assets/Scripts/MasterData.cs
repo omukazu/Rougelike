@@ -11,6 +11,7 @@ namespace Rougelike
     {
         // for Dungeon.cs
         public static GameObject[] tiles { get; private set; }
+        public static GameObject mapInstance;
 
         // for Spawn.cs
         public static GameObject playerObject;
@@ -46,6 +47,7 @@ namespace Rougelike
                 objectName = Enum.GetName(typeof(Tile), (Tile)Enum.ToObject(typeof(Tile), n));
                 tiles[n] = Resources.Load("Tiles/" + objectName) as GameObject;
             }
+            mapInstance = Resources.Load("Tiles/mapInstance") as GameObject;
 
             playerObject = Resources.Load("Characters/player") as GameObject;
             scarecrowObject = Resources.Load("Characters/scarecrow") as GameObject;

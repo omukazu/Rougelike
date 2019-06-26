@@ -17,13 +17,16 @@ namespace Rougelike
         private static int height;
 
         public static int[,] map;
-        public static SpriteRenderer[,] sprites;
         public static List<Coordinates> roomIndices;
         public static int[,][] rooms;
         public static int nDoor;
         public static Dictionary<int, Coordinates> doors;
         public static int nHDoor;
         public static Dictionary<int, Coordinates> hDoors;
+
+        public static SpriteRenderer[,] sprites;
+        public static bool[,] visible;
+        public static Explore[,] explored;
 
         void Start()
         {
@@ -58,7 +61,6 @@ namespace Rougelike
             width = (unitW + 1) * Dungeon.nDivW + 1;
             height = (unitH + 1) * Dungeon.nDivH + 1;
             map = new int[width, height];
-            sprites = new SpriteRenderer[width, height];
             roomIndices = new List<Coordinates>();
             int length = Enum.GetValues(typeof(Index)).Length;
             rooms = new int[Dungeon.nDivW, Dungeon.nDivH][];
@@ -73,6 +75,17 @@ namespace Rougelike
             doors = new Dictionary<int, Coordinates>();
             nHDoor = 0;
             hDoors = new Dictionary<int, Coordinates>();
+
+            sprites = new SpriteRenderer[width, height];
+            visible = new bool[width, height];
+            explored = new Explore[width, height];
+            for (int x = 0; x < Dungeon.nDivW; x++)
+            {
+                for (int y = 0; y < Dungeon.nDivH; y++)
+                {
+                    explored[x, y] = Explore.unknown;
+                }
+            }
         }
 
         int[] GeneratePermutation(int max, int length)
@@ -192,8 +205,8 @@ namespace Rougelike
         void _OverwriteRLUDPath(int rlud)
         {
             int xLeft, dx, yBottom, dy;
-            HashSet<int> forth = new HashSet<int>(){ (int)Tile.wall, (int)Tile.floor };
-            HashSet<int> back = new HashSet<int>() { (int)Tile.division, (int)Tile.path };
+            var forth = new HashSet<int>(){ (int)Tile.wall, (int)Tile.floor };
+            var back = new HashSet<int>() { (int)Tile.division, (int)Tile.path };
             var direction = new int[2];
             for (int x = 1; x < nDivW - 1; x++)
             {
@@ -646,6 +659,7 @@ namespace Rougelike
         {
             var p = new Vector3(0, 0, 0);
             var q = Quaternion.identity;
+            GameObject tile = null;
 
             for (int y = 0; y < height; y++)
             {
@@ -653,7 +667,50 @@ namespace Rougelike
                 {
                     p.x = x;
                     p.y = y;
-                    Instantiate(MasterData.tiles[map[x, y]], p, q);
+                    tile = Instantiate(MasterData.tiles[map[x, y]], p, q);
+                    sprites[x, y] = tile.GetComponent<SpriteRenderer>();
+                }
+            }
+        }
+
+        public static void _Illuminate()
+        {
+            var position = new Vector3(0, 0, 0);
+            var q = Quaternion.identity;
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    position.x = i;
+                    position.y = j;
+                    if (explored[i, j] == Explore.found)
+                    {
+                        explored[i, j] = Explore.explored;
+                        Instantiate(MasterData.mapInstance, position, q);
+                    }
+                }
+            }
+        }
+
+        public static void _UpdateSight(List<Coordinates> sight)
+        {
+            Color color;
+            var p = new Coordinates(0, 0);
+            var hash = sight.ToHashSet();
+            
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    p.X = i;
+                    p.Y = j;
+                    color = sprites[i, j].color;
+                    if (hash.Contains(p) && explored[p.X, p.Y] == Explore.unknown)
+                    {
+                        explored[p.X, p.Y] = Explore.found;
+                    }
+                    color.a = (hash.Contains(p)) ? 1.0f : 0.25f;
+                    sprites[i, j].color = color;
                 }
             }
         }
