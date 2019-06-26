@@ -62,11 +62,7 @@ sysinfo.txt
 crashlytics-build.properties
 
 *.meta
-Assets/UnityVS
 Assets/Animations
 Assets/Resources
-Assets/Fsp/
-Assets/StreamingAssets/
-Assets/UTJ/
 Assets/Movinarc/
 UIElementsSchema/
