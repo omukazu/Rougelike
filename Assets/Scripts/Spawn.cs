@@ -35,7 +35,7 @@ namespace Rougelike
         public void _Initialize()
         {
             maxEnemies = 4;
-            maxItems = 16;
+            maxItems = 36;
 
             enemies = new List<GameObject>();
             eCaches = new List<Enemy>();
@@ -51,7 +51,7 @@ namespace Rougelike
             var p = new Coordinates(0, 0);  //manage gamaobjects by Coordinates
             var position = new Vector3(0, 0, 0);
             var q = Quaternion.identity;
-            for (int n = 0; n < 3; n++)
+            for (int n = 0; n < 1; n++)
             {
                 p.X = Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.xLeft] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.width]);
                 p.Y = Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.yBottom] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndices[n].X, roomIndices[n].Y][(int)Index.height]);
@@ -127,13 +127,14 @@ namespace Rougelike
             for (int n = 0; n < maxItems; n++)
             {
                 roomIndex = Dungeon.roomIndices[UnityEngine.Random.Range(0, Dungeon.roomIndices.Count)];
+                roomIndex = new Coordinates(2,2);
                 p.X = Dungeon.rooms[roomIndex.X, roomIndex.Y][(int)Index.xLeft] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndex.X, roomIndex.Y][(int)Index.width]);
                 p.Y = Dungeon.rooms[roomIndex.X, roomIndex.Y][(int)Index.yBottom] + UnityEngine.Random.Range(0, Dungeon.rooms[roomIndex.X, roomIndex.Y][(int)Index.height]);
                 type = MasterData.itemTypeWeightTable.WeightedRandomSelect();
                 id = MasterData.weightTables[type].WeightedRandomSelect();
                 position.x = p.X;
                 position.y = p.Y;
-                var item = Instantiate(MasterData.itemList[type][id], position, q);
+                var item = Instantiate(MasterData.items[type], position, q);
                 item.name = type + "/" + id;
                 if (!items.ContainsKey(p))
                 {

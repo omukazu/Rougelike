@@ -17,7 +17,8 @@ namespace Rougelike
         public static GameObject playerObject;
         public static GameObject[] enemyList;
         public static GameObject scarecrowObject;
-        public static GameObject[][] itemList;
+        public static GameObject[] items;
+        public static Sprite[][] itemSprites;
 
         public static int[] itemTypeWeightTable { get; private set; }
         public static List<int[]> weightTables { get; private set; }
@@ -28,13 +29,18 @@ namespace Rougelike
         // for CharacterControl.cs
         public static GameObject pointer;
 
+        //for UI.cs
+        public static GameObject canvas;
+        public static GameObject scrollViewNode;
+        public static GameObject command;
+
         private void Start()
         {
             _SetObjects();
             _SetEnemyList();
-            _SetItemList();
+            _SetItems();
             _SetWeightTables();
-            nodeCandidates = new HashSet<int>() { (int)Tile.floor, (int)Tile.path, (int)Tile.door };
+            nodeCandidates = new HashSet<int>() { (int)Tile.floor, (int)Tile.path, (int)Tile.door, (int)Tile.hPath };
         }
 
         private void _SetObjects()
@@ -53,6 +59,9 @@ namespace Rougelike
             scarecrowObject = Resources.Load("Characters/scarecrow") as GameObject;
 
             pointer = Resources.Load("Objects/pointer") as GameObject;
+
+            canvas = GameObject.FindGameObjectWithTag("Canvas");
+            scrollViewNode = Resources.Load("Items/scrollViewNode") as GameObject;
         }
 
         private void _SetEnemyList()
@@ -68,40 +77,45 @@ namespace Rougelike
             }
         }
 
-        private void _SetItemList()
+        private void _SetItems()
         {
             int itemLength = Enum.GetValues(typeof(ItemType)).Length;
-            itemList = new GameObject[itemLength][];
+            items = new GameObject[itemLength];
+            itemSprites = new Sprite[itemLength][];
             for (int m = 0; m < itemLength; m++)
             {
                 switch (m)
                 {
                     case (int)ItemType.weapon:
-                        __SetItemList<Weapon>(m);
+                        items[m] = Resources.Load("Items/Weapon/weapon") as GameObject;
+                        _SetItemSprite<Weapon>(m);
                         break;
                     case (int)ItemType.armor:
-                        __SetItemList<Armor>(m);
+                        items[m] = Resources.Load("Items/Armor/armor") as GameObject;
+                        _SetItemSprite<Armor>(m);
                         break;
                     case (int)ItemType.miscellaneous:
-                        __SetItemList<Miscellaneous>(m);
+                        items[m] = Resources.Load("Items/Miscellaneous/miscellaneous") as GameObject;
+                        _SetItemSprite<Miscellaneous>(m);
                         break;
                     case (int)ItemType.accessory:
-                        __SetItemList<Accessory>(m);
+                        items[m] = Resources.Load("Items/Accessory/accessory") as GameObject;
+                        _SetItemSprite<Accessory>(m);
                         break;
                 }
             }
         }
 
-        private void __SetItemList<Type>(int m)
+        private void _SetItemSprite<Type>(int m)
         {
             string itemName;
             int n_item = Enum.GetValues(typeof(Type)).Length;
-            itemList[m] = new GameObject[n_item];
+            itemSprites[m] = new Sprite[n_item];
             for (int n = 0; n < n_item; n++)
             {
                 itemName = Enum.GetName(typeof(Type), (Type)Enum.ToObject(typeof(Type), n));
-                var item = Resources.Load("Items/"+ typeof(Type).Name+ "/" + itemName) as GameObject;
-                itemList[m][n] = item;
+                var item = Resources.Load<Sprite>("Items/"+ typeof(Type).Name+ "/" + itemName);
+                itemSprites[m][n] = item;
             }
         }
 

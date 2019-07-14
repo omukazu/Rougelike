@@ -15,9 +15,12 @@ namespace Rougelike
 
         private static bool playerTurn;
         private static bool interrupt;
+        private static int patient;
 
         private Dictionary<Coordinates, GameObject> empty;
         public List<Action> actionSequence;
+
+        private static readonly int[,] directions = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
 
         void Start()
         {
@@ -32,23 +35,23 @@ namespace Rougelike
 
             playerTurn = true;
             interrupt = false;
+            patient = 10;
         }
 
         void Update()
         {
-            var p = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            var mousePosition = Input.mousePosition;
+            var p = Camera.main.ScreenToWorldPoint(mousePosition);
             p.x = (int)Math.Round(p.x, 0, MidpointRounding.AwayFromZero);
             p.y = (int)Math.Round(p.y, 0, MidpointRounding.AwayFromZero);
             p.z = 0;
             pointer.transform.position = p;
 
-            if (playerTurn)
+            if (playerTurn && !UI.isUI(mousePosition))
             {
                 interrupt = false;
                 if (Input.GetMouseButtonDown(0))
                 {
-                    var mousePosition = Input.mousePosition;
-                    mousePosition.z = -1.0f;
                     var start = Spawn.pCache.p;
                     var goal = TransformMouseInput(mousePosition);
                     var branch = GetBranch(mousePosition, start, goal);
@@ -93,38 +96,22 @@ namespace Rougelike
 
         Branch GetBranch(Vector3 mousePosition, Coordinates start, Coordinates goal)
         {
-            if (EventSystem.current != null)
+            if (EnemyDetected(goal))
             {
-                var ped = new PointerEventData(EventSystem.current);
-                ped.position = mousePosition;
-                var raycastResult = new List<RaycastResult>();
-                EventSystem.current.RaycastAll(ped, raycastResult);
-                GameObject targetUI = null;
+                if (Attacks(Spawn.player, Spawn.pCache, Spawn.characters[goal], goal))
+                {
+                    return Branch.attack;
+                }
+                else if (Math.Max(Math.Abs(goal.X - start.X), Math.Abs(goal.Y - start.Y)) > Spawn.pCache.range)
+                {
+                    return Branch.moveToEnemy;
+                }
+            }
+            else if (MasterData.nodeCandidates.Contains(Dungeon.map[goal.X, goal.Y]) && !Spawn.characters.ContainsKey(goal))
+            {
+                return Branch.walk;
+            }
 
-                if (UI.isUI(raycastResult, ref targetUI))
-                {
-                    return Branch.none;
-                }
-            }
-            if(true)  // There is no UI on the screen → walk, attack or moveToEnemy
-            {
-                if (EnemyDetected(goal))
-                {
-                    if (Attacks(Spawn.player, Spawn.pCache, Spawn.characters[goal], goal))
-                    {
-                        return Branch.attack;
-                    }
-                    else if (Math.Max(Math.Abs(goal.X - start.X), Math.Abs(goal.Y - start.Y)) > Spawn.pCache.range)
-                    {
-                        return Branch.moveToEnemy;
-                    }
-                }
-                else if (MasterData.nodeCandidates.Contains(Dungeon.map[goal.X, goal.Y]) && !Spawn.characters.ContainsKey(goal))
-                {
-                    return Branch.walk;
-                }
-            }
-            
             return Branch.none;
         }
 
@@ -179,11 +166,10 @@ namespace Rougelike
             }
 
             var periphery = nextStep;
-            var direction = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
             for (int i = 0; i < 8; i++)
             {
-                periphery.X = nextStep.X + direction[i, 0];
-                periphery.Y = nextStep.Y + direction[i, 1];
+                periphery.X = nextStep.X + directions[i, 0];
+                periphery.Y = nextStep.Y + directions[i, 1];
                 if (EnemyDetected(periphery))
                 {
                     return true;
@@ -195,17 +181,16 @@ namespace Rougelike
         bool Reach(Coordinates p, GameObject target)
         {
             var periphery = p;
-            var direction = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
             for (int i = 0; i < 8; i++)
             {
-                periphery.X = p.X + direction[i, 0];
-                periphery.Y = p.Y + direction[i, 1];
-                if(Spawn.characters.ContainsKey(periphery) && Spawn.characters[periphery] == target)
+                periphery.X = p.X + directions[i, 0];
+                periphery.Y = p.Y + directions[i, 1];
+                if (Spawn.characters.ContainsKey(periphery) && Spawn.characters[periphery] == target)
                 {
-                    return false;
+                    return true;
                 }
             }
-            return true;
+            return false;
         }
 
         IEnumerator Walk(Coordinates start, Coordinates goal)
@@ -244,11 +229,11 @@ namespace Rougelike
                 var start = Spawn.pCache.p;
                 var goal = targetComponent.p;
                 var path = AstarAlgorithm.GetPath(start, goal, empty, seek: false);
-                if (Spawn.characters.ContainsKey(path[0]))
+                if (Stop(path[0]))
                 {
                     var obstacles = ObstacleSetter.GetObstacles(start, target: target);
                     path = AstarAlgorithm.GetPath(start, goal, obstacles, seek: false);
-                    if (path.Count == 0)
+                    if (Stop(path[0]))
                     {
                         break;
                     }
@@ -262,7 +247,7 @@ namespace Rougelike
                 time = CalculateTime();
                 StartCoroutine(ActEnemies());
                 yield return new WaitForSecondsRealtime(time);
-            } while (Reach(step, target));
+            } while (!Reach(step, target));
             playerTurn = true;
         }
 
@@ -405,7 +390,7 @@ namespace Rougelike
                         }
 
                         var targetComponent = Spawn.characters[goal].GetComponent<Enemy>();  // if there are some characters, they are always enemies
-                        if (targetComponent.chase && (AstarAlgorithm.GetPath(sourceP, goal, empty, false).Count <= 2))
+                        if (targetComponent.chase && (AstarAlgorithm.GetPath(sourceP, goal, empty, seek: false).Count <= 2))
                         {
                             return targetComponent.targetObject;
                         }
@@ -471,7 +456,7 @@ namespace Rougelike
                                 sourceComponent.patient -= 1;
                                 if (sourceComponent.patient <= 0)
                                 {
-                                    sourceComponent.patient = 5;
+                                    sourceComponent.patient = patient;
                                     sourceComponent.chase = false;
                                 }
                             }
@@ -492,7 +477,7 @@ namespace Rougelike
 
             if (sourceComponent.patient <= 0)
             {
-                sourceComponent.patient = 5;
+                sourceComponent.patient = patient;
                 sourceComponent.path.Clear();
             }
 
@@ -521,14 +506,14 @@ namespace Rougelike
                         if (targetComponent.chase)
                         {
                             sourceComponent.chase = true;
-                            sourceComponent.patient = 5;
+                            sourceComponent.patient = patient;
                         }
                         else if (targetComponent.collisionDetected && targetComponent.collisionObject == source && !targetComponent.swap)
                         {
                             _Reset(sourceComponent);
-                            sourceComponent.patient = 5;
+                            sourceComponent.patient = patient;
                             _Reset(targetComponent);
-                            targetComponent.patient = 5;
+                            targetComponent.patient = patient;
                             targetComponent.swap = true;
                             actionSequence.Add(new Swap(ActionPattern.swap, source, sourceP, Spawn.characters[step], step));
                             sourceComponent.path.RemoveAt(0);
@@ -619,7 +604,6 @@ namespace Rougelike
 
         void _Approch(GameObject source, Character sourceComponent, Coordinates sourceP, Coordinates targetP)
         {
-            var directions = new int[8, 2] { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
             int distance = (int)Math.Pow(targetP.X - sourceP.X, 2) + (int)Math.Pow(targetP.Y - sourceP.Y, 2);
             int minDistance = distance;
             int index = -1;
@@ -645,7 +629,7 @@ namespace Rougelike
                 _Synchronize(source, sourceComponent, sourceP, p);
             }
         }
-        
+
         bool Attacks(GameObject source, Character sourceComponent, GameObject target, Coordinates targetP)
         {
             var sourceP = sourceComponent.p;

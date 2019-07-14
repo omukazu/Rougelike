@@ -73,14 +73,14 @@ namespace Rougelike
 
     public class NodeControl
     {
-        Dictionary<Coordinates, GameObject> sight;
+        Dictionary<Coordinates, GameObject> obstacles;
         Dictionary<Coordinates, Node> nodes;
         List<Node> openedNodes;
         List<Node> closedNodes;
 
-        public NodeControl(Dictionary<Coordinates, GameObject> sight)
+        public NodeControl(Dictionary<Coordinates, GameObject> obstacles)
         {
-            this.sight = sight;
+            this.obstacles = obstacles;
             nodes = new Dictionary<Coordinates, Node>();
             openedNodes = new List<Node>();
             closedNodes = new List<Node>();
@@ -110,7 +110,7 @@ namespace Rougelike
 
         public Node OpenNode(Coordinates nodeCoordinates, Coordinates goal, int cost, Node parentNode)
         {
-            if (!MasterData.nodeCandidates.Contains(Dungeon.map[nodeCoordinates.X, nodeCoordinates.Y]) || sight.ContainsKey(nodeCoordinates))
+            if (!MasterData.nodeCandidates.Contains(Dungeon.map[nodeCoordinates.X, nodeCoordinates.Y]) || obstacles.ContainsKey(nodeCoordinates))
             {
                 return null;
             }
@@ -187,18 +187,18 @@ namespace Rougelike
 
     public static class AstarAlgorithm
     {
-        public static List<Coordinates> GetPath(Coordinates start, Coordinates goal, Dictionary<Coordinates, GameObject> sight, bool seek)
+        public static List<Coordinates> GetPath(Coordinates start, Coordinates goal, Dictionary<Coordinates, GameObject> obstacles, bool seek)
         {
             var path = new List<Coordinates>();
             if (MasterData.nodeCandidates.Contains(Dungeon.map[goal.X, goal.Y]))
             {
                 var door = new List<Coordinates>();
                 var partialPath = new List<Coordinates>();
-                _AstarAlgorithm(start, goal, ref door, sight, door: true);
+                _AstarAlgorithm(start, goal, ref door, obstacles, door: true);
 
                 if (door.Count == 0)
                 {
-                    _AstarAlgorithm(start, goal, ref path, sight, door: false);
+                    _AstarAlgorithm(start, goal, ref path, obstacles, door: false);
                 }
                 else
                 {
@@ -215,7 +215,7 @@ namespace Rougelike
                             else { goal = destination; }
                         }
 
-                        _AstarAlgorithm(start, goal, ref partialPath, sight, door: false);
+                        _AstarAlgorithm(start, goal, ref partialPath, obstacles, door: false);
                         path.AddRange(partialPath);
                         partialPath.Clear();
                         index++;
@@ -229,9 +229,9 @@ namespace Rougelike
             return path;
         }
 
-        static void _AstarAlgorithm(Coordinates start, Coordinates goal, ref List<Coordinates> list, Dictionary<Coordinates, GameObject> sight, bool door)
+        static void _AstarAlgorithm(Coordinates start, Coordinates goal, ref List<Coordinates> list, Dictionary<Coordinates, GameObject> obstacles, bool door)
         {
-            var nodeControl = new NodeControl(sight);
+            var nodeControl = new NodeControl(obstacles);
             var node = nodeControl.OpenNode(start, goal, 0, null);
 
             int count = 0;
@@ -291,7 +291,6 @@ namespace Rougelike
         public static List<Coordinates> Sight(Coordinates start)
         {
             var sight = new List<Coordinates>();
-            sight.Add(start);
             int x = 1 + (start.X / (Dungeon.unitW + 1)) * (Dungeon.unitW + 1);
             int y = 1 + (start.Y / (Dungeon.unitH + 1)) * (Dungeon.unitH + 1);
             var p = new Coordinates(x, y);
@@ -304,7 +303,7 @@ namespace Rougelike
                     {
                         p.X = x + i;
                         p.Y = y + j;
-                        if ((start.X != p.X || start.Y != p.Y) && (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door))
+                        if (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door)
                         {
                             sight.Add(p);
                         }
@@ -319,7 +318,7 @@ namespace Rougelike
                     {
                         p.X = x + i;
                         p.Y = y + j;
-                        if ((start.X != p.X || start.Y != p.Y) && (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door))
+                        if (Dungeon.map[p.X, p.Y] == (int)Tile.floor || Dungeon.map[p.X, p.Y] == (int)Tile.door)
                         {
                             sight.Add(p);
                         }
@@ -344,6 +343,7 @@ namespace Rougelike
             }
             else if (Dungeon.map[start.X, start.Y] == (int)Tile.path)
             {
+                sight.Add(start);
                 _ExpandSight(start, Direction.right, ref sight);
                 _ExpandSight(start, Direction.left, ref sight);
                 _ExpandSight(start, Direction.up, ref sight);
@@ -361,7 +361,7 @@ namespace Rougelike
             var p = start;
             List<int> one = new List<int>(), theOther = new List<int>();
 
-            while (Dungeon.map[start.X + i, start.Y + j] == 3 || Dungeon.map[start.X + i, start.Y + j] == 4)
+            while (Dungeon.map[start.X + i, start.Y + j] == (int)Tile.path || Dungeon.map[start.X + i, start.Y + j] == (int)Tile.door)
             {
                 p.X = start.X + i;
                 p.Y = start.Y + j;
